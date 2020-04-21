@@ -1,0 +1,141 @@
+from tkinter import *
+from tkinter import messagebox
+import datetime as dt
+from datetime import timedelta
+from urllib.request import urlopen
+import base64
+import sqlite3
+class WH:
+    c=0;        #Location of the product(bin)
+    total=0;    #total earning
+    def enter(self):
+        var = StringVar()
+        def insert():
+            self.entry(p.get(),w.get(),v.get(),e.get())
+            var.set("The product has been successfully stored")
+            label = Label(sub, text="The product has been successfully stored",width=0,height=0).place(x=180,y=500)
+        sub = Toplevel(root)
+        sub.geometry('650x600')
+        sub.title("Warehosue Management System")
+        sub.configure(bg='lightblue')
+        lb= Label(sub, text="Warehouse Management Sytem - Insert in Database",font=("Helvetica",12)).place(x=100,y=60)
+        lb1= Label(sub, text="Product Id")
+        lb1.place(x=100,y=120)
+        p=StringVar();e1 = Entry(sub,textvariable=p).place(x=250,y=120)
+        lb2 = Label(sub, text="Weight").place(x=100,y=170)
+        w=IntVar();e2= Entry(sub,textvariable=w).place(x=250,y=170)
+        lb3 = Label(sub, text="Product type").place(x=100,y=220)
+        v = StringVar()
+        r1="Frozen Products";r2="Perishable";r3="Non Persihable";
+        Radiobutton(sub, text="Frozen Products",value=r1, variable=v, padx = 10).place(x=250,y=220)
+        Radiobutton(sub, text="Perishable", variable=v,value=r2, padx = 10).place(x=250,y=260)
+        Radiobutton(sub, text="Non Persihable",value=r3,variable=v, padx = 10).place(x=250,y=300)
+        lb3 = Label(sub, text="Expiry (in days)").place(x=100,y=350)
+        e=IntVar()
+        e3 = Entry(sub,textvariable=e).place(x=250,y=350)
+        Button(sub, text='Submit',width=10,bg='black',fg='white',command=insert).place(x=180,y=400)
+    def __init__(self):
+        self.conn = sqlite3.connect("warehouse.db")
+        self.cur = self.conn.cursor()
+        self.cur.execute('''CREATE TABLE IF NOT EXISTS PRODUCT(PID VARCHAR(10) ,PTYPE TEXT,WEIGHT NUMERIC,INTIME TEXT,OUTIME TEXT,EXPIRY TEXT,LOCATION NUMERIC);''')
+        #self.conn.execute('''DROP TABLE PRODUCT;''')
+        self.conn.commit()
+    def entry(self,id,wt,ptype,e):
+        it=f"{dt.datetime.now():%a, %b %d %Y}"
+        et=str(e)+' days'
+        ot=f"{(dt.datetime.now()+ timedelta(days=(int(e*0.4)))):%a, %b %d %Y}"    #Shipping few days before expiry
+        self.c=self.c+1
+        if(ptype=='Frozen Products'):
+            self.total=self.total+( 30000 if wt<=100 else 70000)
+        elif(ptype=='Perishable'):
+            self.total=self.total+( 10000 if wt<=100 else 30000)
+        else:
+            self.total=self.total+( 40000 if wt<=100 else 90000)
+        self.cur.execute("INSERT INTO PRODUCT VALUES(:1,:2,:3,:4,:5,:6,:7)",(id,ptype,wt,it,ot,et,self.c))
+        self.conn.commit()
+    def search(self):
+        s=StringVar();
+        def show():
+            print(s)
+            self.cur.execute('''SELECT * FROM PRODUCT WHERE PID=(:n) or PTYPE=(:n)''',(s.get(),))
+            all_rec='PID    PType \t Weight  \t\t In-time\t\t\t  Out-time \t\t  Expiry     #Container\n\n'
+            rows = self.cur.fetchall()
+            for row in rows:
+                all_rec+=str(list(row)).replace(',','\t')+'\n'
+            l=Label(w,text=all_rec).place(x=10,y=220)
+        w = Toplevel(root)
+        w.geometry('650x600')
+        w.title("Warehosue Management System")
+        w.configure(bg='lightblue')
+        lb= Label(w, text="Warehouse Management Sytem - Search Database",font=("Helvetica",12))
+        lb.place(x=100,y=60)
+        lb1= Label(w, text="Search Value: ")
+        lb1.place(x=100,y=120)
+        e1 = Entry(w,textvariable=s).place(x=250,y=120)
+        Button(w, text='Search Product',width=10,bg='black',fg='white',command=show).place(x=180,y=180)    
+    def view(self):
+        w = Toplevel(root)
+        w.geometry('650x550')
+        w.title("Warehosue Management System")
+        w.configure(bg='lightblue')
+        Label(w, text="Warehouse Management Sytem  - VIEW RECORDS",font=("Helvetica",12)).place(x=100,y=60)
+        self.cur.execute("SELECT * FROM PRODUCT")
+        all_rec='PID    PType \t Weight  \t\t In-time\t\t\t  Out-time \t\t  Expiry     #Container\n\n'
+        rows = self.cur.fetchall()
+        for row in rows:
+            all_rec+=str(list(row)).replace(',','\t')+'\n'
+        Label(w,text=all_rec).place(x=10,y=220)
+    def remove(self):
+        s=StringVar();
+        def notify():
+            self.cur.execute('''DELETE FROM PRODUCT WHERE PID=(:n)''',(s.get(),))
+            Label(w, text="The product has been successfully removed",width=0,height=0).place(x=180,y=500)
+        w = Toplevel(root)
+        w.geometry('650x600')
+        w.title("Warehosue Management System")
+        w.configure(bg='lightblue')
+        Label(w, text="Warehouse Management Sytem - Search Database",font=("Helvetica",12)).place(x=100,y=60)
+        Label(w, text="Enter Product Id: ").place(x=100,y=120)
+        Entry(w,textvariable=s).place(x=250,y=120)
+        Button(w, text='Remove Product',width=14,bg='black',fg='white',command=notify).place(x=180,y=180)    
+    def account(self):
+        w = Toplevel(root)
+        w.geometry('600x550')
+        w.title("Warehosue Management System")
+        w.configure(bg='lightblue')
+        Label(w, text="Warehouse Management Sytem  - ACCOUNT",font=("Helvetica",12)).place(x=100,y=60)
+        cost="Product Values: \n Weight: \t\t<=100  \t\t>100 \nFrozen Product\t\t30000\t\t70000\nPerishable\t\t10000\t\t30000\nNon Perishable\t\t40000\t\t90000"
+        Label(w, text='Income',bg='black',fg='white').place(x=100,y=180)
+        Label(w, text=cost).place(x=100,y=200)
+        expense='Electricity/Water Bill :\t\t8500\n Labour Expense :\t\t35000\n Transportation :\t\t20000'
+        Label(w, text='Expense',bg='black',fg='white').place(x=100,y=280)
+        Label(w, text=expense).place(x=100,y=300)
+        Label(w, text='Balance:\t\t'+'Rs.\t\t'+str(self.total-63500)).place(x=100,y=120)
+    def exit(self):
+        copy=o
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            root.destroy()
+        del copy
+root = Tk()
+root.geometry('600x550')
+root.title("Warehosue Management System")
+root.configure(bg='lightblue')
+o=WH()
+Label(root,bg='black',width=800,height=2).place(x=0,y=0)
+Button(root, text='Entry',width=10,bg='black',fg='white',font=('Helvetica',10,'bold'),command=o.enter).place(x=10,y=5)
+Button(root, text='Search',width=10,bg='black',fg='white',font=('Helvetica',10,'bold'),command=o.search).place(x=100,y=5)
+Button(root, text='View',width=10,bg='black',fg='white',font=('Helvetica',10,'bold'),command=o.view).place(x=200,y=5)
+Button(root, text='Remove',width=10,bg='black',fg='white',font=('Helvetica',10,'bold'),command=o.remove).place(x=300,y=5)
+Button(root, text='Account',width=10,bg='black',fg='white',font=('Helvetica',10,'bold'),command=o.account).place(x=500,y=5)
+Button(root, text='Exit',width=10,bg='black',fg='white',font=('Helvetica',10,'bold'),command=o.exit).place(x=400,y=5)
+entry = Entry(bg='black', fg='white')
+Label(root, text="Warehouse Management Sytem",font=("Helvetica",12)).place(x=100,y=60)
+image_url='https://blog.advids.co/wp-content/uploads//2017/07/warehouse-gif-min.gif'
+image_byt = urlopen(image_url).read()
+image_b64 = base64.encodebytes(image_byt)
+photo =PhotoImage(data=image_b64)
+photo=PhotoImage(file='warehouse.gif', format="gif -index 2")
+t='Welcome Admin! '
+Label(root, text=t,bg='black',fg='white',font=("Helvetica",12)).place(x=100,y=100)
+Label(image = photo).place(x=100,y=150)
+root.mainloop()
